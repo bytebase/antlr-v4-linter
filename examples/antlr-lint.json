@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "S001": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "S002": {
+      "enabled": true,
+      "severity": "warning"
+    },
+    "S003": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "N001": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "N002": {
+      "enabled": true,
+      "severity": "error"
+    },
+    "N003": {
+      "enabled": true,
+      "severity": "warning"
+    }
+  },
+  "excludePatterns": [
+    "*.generated.g4",
+    "*Test*.g4"
+  ],
+  "outputFormat": "text"
+}
