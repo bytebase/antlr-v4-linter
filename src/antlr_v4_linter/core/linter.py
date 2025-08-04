@@ -29,8 +29,35 @@ class ANTLRLinter:
             LexerRuleNamingRule,
             InconsistentNamingRule
         )
+        from ..rules.labeling_rules import (
+            MissingAlternativeLabelsRule,
+            InconsistentLabelNamingRule,
+            DuplicateLabelsRule
+        )
+        from ..rules.complexity_rules import (
+            ExcessiveComplexityRule,
+            DeeplyNestedRuleRule,
+            VeryLongRuleRule
+        )
+        from ..rules.token_rules import (
+            OverlappingTokensRule,
+            UnreachableTokenRule,
+            UnusedTokenRule
+        )
+        from ..rules.error_handling_rules import (
+            MissingErrorRecoveryRule,
+            PotentialAmbiguityRule
+        )
+        from ..rules.performance_rules import (
+            BacktrackingRule,
+            InefficientLexerRule
+        )
+        from ..rules.documentation_rules import (
+            MissingRuleDocumentationRule,
+            MissingGrammarHeaderRule
+        )
         
-        # Register Phase 1 rules
+        # Register all rules
         rules = [
             # Syntax and Structure (S001-S003)
             MissingEOFRule(),
@@ -41,6 +68,33 @@ class ANTLRLinter:
             ParserRuleNamingRule(),
             LexerRuleNamingRule(),
             InconsistentNamingRule(),
+            
+            # Labeling and Organization (L001-L003)
+            MissingAlternativeLabelsRule(),
+            InconsistentLabelNamingRule(),
+            DuplicateLabelsRule(),
+            
+            # Complexity and Maintainability (C001-C003)
+            ExcessiveComplexityRule(),
+            DeeplyNestedRuleRule(),
+            VeryLongRuleRule(),
+            
+            # Token and Lexer (T001-T003)
+            OverlappingTokensRule(),
+            UnreachableTokenRule(),
+            UnusedTokenRule(),
+            
+            # Error Handling (E001-E002)
+            MissingErrorRecoveryRule(),
+            PotentialAmbiguityRule(),
+            
+            # Performance (P001-P002)
+            BacktrackingRule(),
+            InefficientLexerRule(),
+            
+            # Documentation (D001-D002)
+            MissingRuleDocumentationRule(),
+            MissingGrammarHeaderRule(),
         ]
         
         self.rule_engine.register_rules(rules)
