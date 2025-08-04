@@ -59,6 +59,8 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         skip-existing: true
+        # Fallback to password if trusted publishing not configured
+        password: ${{ secrets.PYPI_API_TOKEN }}
 
   publish-to-testpypi:
     name: Publish to TestPyPI
@@ -85,6 +87,8 @@ jobs:
       with:
         repository-url: https://test.pypi.org/legacy/
         skip-existing: true
+        # Fallback to password if trusted publishing not configured
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
   create-github-release:
     name: Create GitHub Release
