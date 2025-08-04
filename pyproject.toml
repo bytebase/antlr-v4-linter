@@ -7,9 +7,17 @@ name = "antlr-v4-linter"
 version = "0.1.0"
 description = "A comprehensive static analysis linter for ANTLR v4 grammar files"
 readme = "README.md"
-requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Bytebase", email = "support@bytebase.com"}
+]
+maintainers = [
+    {name = "Bytebase Team", email = "support@bytebase.com"}
+]
+keywords = ["antlr", "antlr4", "linter", "grammar", "parser", "lexer", "static-analysis"]
+requires-python = ">=3.8.1"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -17,7 +25,11 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "antlr4-python3-runtime>=4.13.0",
@@ -25,6 +37,13 @@ dependencies = [
     "pydantic>=2.0.0",
     "rich>=13.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/bytebase/antlr-v4-linter"
+Documentation = "https://github.com/bytebase/antlr-v4-linter#readme"
+Repository = "https://github.com/bytebase/antlr-v4-linter"
+Issues = "https://github.com/bytebase/antlr-v4-linter/issues"
+Changelog = "https://github.com/bytebase/antlr-v4-linter/releases"
 
 [project.optional-dependencies]
 dev = [
