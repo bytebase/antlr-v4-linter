@@ -240,6 +240,6 @@ Use the "Manual Release" workflow in GitHub Actions:
 ### Continuous Integration
 
 All pushes and pull requests run:
-- Multi-platform tests (Linux, macOS, Windows)
+- Multi-platform tests (Linux, macOS)
 - Python 3.8-3.12 compatibility tests
 - Code quality checks (black, isort, flake8, mypy)
