@@ -146,42 +146,56 @@ class AmbiguousStringLiteralsRule(LintRule):
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
         
-        # Collect all string literals from lexer rules
-        literal_to_rules = {}  # literal -> list of rules that use it
+        # Collect all string literals from lexer rules, grouped by mode
+        # Structure: {mode: {literal: [(rule, element)]}}
+        mode_literals = {}  
         
         lexer_rules = [rule for rule in grammar.rules if rule.is_lexer_rule]
         
         for rule in lexer_rules:
+            # Determine the mode for this rule (None for default mode)
+            mode = rule.mode if hasattr(rule, 'mode') else None
+            
+            if mode not in mode_literals:
+                mode_literals[mode] = {}
+            
             for alternative in rule.alternatives:
                 for element in alternative.elements:
+                    # Only check actual string literals, not character sets
                     if element.element_type == "terminal" and (
                         element.text.startswith("'") or element.text.startswith('"')
                     ):
+                        # Skip empty strings or malformed literals
+                        if len(element.text) < 2:
+                            continue
+                        
                         literal = element.text
-                        if literal not in literal_to_rules:
-                            literal_to_rules[literal] = []
-                        literal_to_rules[literal].append((rule, element))
+                        if literal not in mode_literals[mode]:
+                            mode_literals[mode][literal] = []
+                        mode_literals[mode][literal].append((rule, element))
         
-        # Find ambiguous literals
-        for literal, rule_elements in literal_to_rules.items():
-            if len(rule_elements) > 1:
-                # Get unique rules (same rule might use same literal multiple times)
-                unique_rules = list(set(rule for rule, _ in rule_elements))
-                
-                if len(unique_rules) > 1:
-                    for rule, element in rule_elements:
-                        issues.append(Issue(
-                            rule_id=self.rule_id,
-                            severity=config.severity,
-                            message=f"String literal {literal} is ambiguous (used in multiple lexer rules: {', '.join(r.name for r in unique_rules)})",
-                            file_path=grammar.file_path,
-                            range=element.range,
-                            suggestions=[
-                                FixSuggestion(
-                                    description="Use unique string literals or consolidate rules",
-                                    fix=f"Consider using a shared token rule for {literal}"
-                                )
-                            ]
-                        ))
+        # Find ambiguous literals within each mode
+        for mode, literal_to_rules in mode_literals.items():
+            for literal, rule_elements in literal_to_rules.items():
+                if len(rule_elements) > 1:
+                    # Get unique rules (same rule might use same literal multiple times)
+                    unique_rules = list(set(rule for rule, _ in rule_elements))
+                    
+                    if len(unique_rules) > 1:
+                        mode_str = f" in mode '{mode}'" if mode else ""
+                        for rule, element in rule_elements:
+                            issues.append(Issue(
+                                rule_id=self.rule_id,
+                                severity=config.severity,
+                                message=f"String literal {literal} is ambiguous{mode_str} (used in multiple lexer rules: {', '.join(r.name for r in unique_rules)})",
+                                file_path=grammar.file_path,
+                                range=element.range,
+                                suggestions=[
+                                    FixSuggestion(
+                                        description="Use unique string literals or consolidate rules",
+                                        fix=f"Consider using a shared token rule for {literal}"
+                                    )
+                                ]
+                            ))
         
         return issues

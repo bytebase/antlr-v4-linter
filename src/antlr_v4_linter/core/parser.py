@@ -24,6 +24,43 @@ class SimpleGrammarParser:
         self.lines: List[str] = []
         self.current_line = 0
     
+    def _remove_block_comments(self, content: str) -> str:
+        """Remove /* */ block comments while preserving line numbers."""
+        result = []
+        in_block_comment = False
+        i = 0
+        
+        while i < len(content):
+            # Check for start of block comment
+            if not in_block_comment and i < len(content) - 1 and content[i:i+2] == '/*':
+                in_block_comment = True
+                # Replace with spaces to preserve positions
+                result.append(' ')
+                result.append(' ')
+                i += 2
+                continue
+            
+            # Check for end of block comment
+            if in_block_comment and i < len(content) - 1 and content[i:i+2] == '*/':
+                in_block_comment = False
+                result.append(' ')
+                result.append(' ')
+                i += 2
+                continue
+            
+            # If in block comment, replace with space (preserving newlines)
+            if in_block_comment:
+                if content[i] == '\n':
+                    result.append('\n')
+                else:
+                    result.append(' ')
+            else:
+                result.append(content[i])
+            
+            i += 1
+        
+        return ''.join(result)
+    
     def parse_file(self, file_path: str) -> GrammarAST:
         """Parse a .g4 grammar file and return the AST."""
         path = Path(file_path)
@@ -37,6 +74,9 @@ class SimpleGrammarParser:
     
     def parse_content(self, content: str, file_path: str) -> GrammarAST:
         """Parse grammar content and return the AST."""
+        # Remove block comments while preserving line numbers
+        content = self._remove_block_comments(content)
+        
         self.lines = content.splitlines()
         self.current_line = 0
         
@@ -66,7 +106,7 @@ class SimpleGrammarParser:
         """Parse the grammar declaration line."""
         for i, line in enumerate(self.lines):
             line = line.strip()
-            if not line or line.startswith('//') or line.startswith('/*'):
+            if not line or line.startswith('//'):
                 continue
             
             # Match grammar declaration patterns
@@ -108,10 +148,17 @@ class SimpleGrammarParser:
     def _parse_rules(self) -> List[Rule]:
         """Parse all rules in the grammar."""
         rules = []
+        current_mode = None
         
         for i, line in enumerate(self.lines):
             line = line.strip()
-            if not line or line.startswith('//') or line.startswith('/*'):
+            if not line or line.startswith('//'):
+                continue
+            
+            # Check for mode declarations
+            mode_match = re.match(r'^\s*mode\s+(\w+)\s*;', line)
+            if mode_match:
+                current_mode = mode_match.group(1)
                 continue
             
             # Skip non-rule lines
@@ -138,7 +185,8 @@ class SimpleGrammarParser:
                         start=Position(line=i + 1, column=1),
                         end=Position(line=i + len(rule_content.split('\n')), column=1)
                     ),
-                    alternatives=alternatives
+                    alternatives=alternatives,
+                    mode=current_mode  # Track which mode this rule belongs to
                 )
                 rules.append(rule)
         
@@ -148,23 +196,72 @@ class SimpleGrammarParser:
         """Extract the complete content of a rule."""
         content_lines = []
         brace_count = 0
+        paren_count = 0
+        bracket_count = 0
+        in_string = False
+        string_char = None
         in_rule = False
         
         for i in range(start_line, len(self.lines)):
-            line = self.lines[i].strip()
+            line = self.lines[i]
+            original_line = line
+            line = line.strip()
             
+            # Skip empty lines and comments
+            if not line or line.startswith('//'):
+                if in_rule:
+                    content_lines.append(line)
+                continue
+            
+            # Start of rule
             if ':' in line and not in_rule:
                 in_rule = True
             
             if in_rule:
                 content_lines.append(line)
                 
-                # Count braces to handle nested structures
-                brace_count += line.count('{') - line.count('}')
+                # Track nesting depth properly
+                j = 0
+                while j < len(line):
+                    char = line[j]
+                    
+                    # Handle string literals
+                    if not in_string and (char == "'" or char == '"'):
+                        in_string = True
+                        string_char = char
+                    elif in_string and char == string_char:
+                        # Check if it's escaped
+                        if j > 0 and line[j-1] != '\\':
+                            in_string = False
+                            string_char = None
+                    elif not in_string:
+                        # Count nesting outside of strings
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                        elif char == '(':
+                            paren_count += 1
+                        elif char == ')':
+                            paren_count -= 1
+                        elif char == '[':
+                            bracket_count += 1
+                        elif char == ']':
+                            bracket_count -= 1
+                        elif char == ';':
+                            # Rule ends with semicolon when all nesting is closed
+                            if brace_count == 0 and paren_count == 0 and bracket_count == 0:
+                                return '\n'.join(content_lines)
+                    
+                    j += 1
                 
-                # Rule ends with semicolon at the appropriate nesting level
-                if line.endswith(';') and brace_count == 0:
-                    break
+                # Check if we've found the start of a new rule (which means current rule ended without semicolon)
+                if i > start_line:
+                    next_rule_match = re.match(r'^\s*(fragment\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*:', line)
+                    if next_rule_match:
+                        # Remove the incorrectly added line and return
+                        content_lines.pop()
+                        return '\n'.join(content_lines)
         
         return '\n'.join(content_lines)
     
@@ -239,8 +336,26 @@ class SimpleGrammarParser:
         """Parse elements from alternative text (simplified)."""
         elements = []
         
+        # Remove lexer commands (-> skip, -> channel(...), etc.)
+        alt_text = re.sub(r'->\s*\w+(\([^)]*\))?', '', alt_text)
+        
+        # Remove mode commands
+        alt_text = re.sub(r'->\s*(mode|pushMode|popMode)\s*\([^)]*\)', '', alt_text)
+        
+        # Handle character ranges in brackets properly
+        # Replace [a-z] style patterns with a placeholder to avoid splitting issues
+        bracket_patterns = re.findall(r'\[[^\]]+\]', alt_text)
+        for i, pattern in enumerate(bracket_patterns):
+            placeholder = f"__BRACKET_{i}__"
+            alt_text = alt_text.replace(pattern, placeholder)
+        
         # Simple tokenization - split by whitespace but preserve quoted strings
         tokens = re.findall(r"'[^']*'|\"[^\"]*\"|\S+", alt_text)
+        
+        # Restore bracket patterns
+        for i, pattern in enumerate(bracket_patterns):
+            placeholder = f"__BRACKET_{i}__"
+            tokens = [pattern if t == placeholder else t for t in tokens]
         
         for token in tokens:
             if not token:
@@ -249,6 +364,8 @@ class SimpleGrammarParser:
             element_type = "unknown"
             if token.startswith("'") or token.startswith('"'):
                 element_type = "terminal"
+            elif token.startswith('[') and token.endswith(']'):
+                element_type = "char_set"
             elif token[0].isupper():
                 element_type = "token_ref"
             elif token[0].islower():

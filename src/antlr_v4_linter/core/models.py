@@ -60,6 +60,7 @@ class Rule:
     alternatives: List[Alternative] = field(default_factory=list)
     is_fragment: bool = False
     modifiers: List[str] = field(default_factory=list)
+    mode: Optional[str] = None  # Lexer mode this rule belongs to
     
     def __hash__(self) -> int:
         return hash((self.name, self.is_lexer_rule, self.is_fragment))
