@@ -13,7 +13,7 @@ from ..core.reporter import ReporterFactory
 
 
 @click.group()
-@click.version_option(version="0.1.1", prog_name="antlr-lint")
+@click.version_option(version="0.1.3", prog_name="antlr-lint")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.pass_context
 def cli(ctx, verbose):
