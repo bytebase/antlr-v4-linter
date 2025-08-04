@@ -207,6 +207,39 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ All 24 rules implemented
 - ✅ Published to PyPI
 - ✅ Comprehensive test coverage
+- ✅ GitHub Actions CI/CD
 - 🚧 IDE extensions (coming soon)
 - 🚧 Auto-fix capabilities (coming soon)
-- 🚧 GitHub Actions integration (coming soon)
+
+## 🚀 GitHub Actions Integration
+
+The project includes automated CI/CD workflows:
+
+### Automatic Release on Tag
+
+When you push a version tag (e.g., `0.1.3`), the package is automatically:
+1. Built and tested
+2. Published to Test PyPI
+3. Published to Production PyPI
+4. GitHub Release created
+
+```bash
+# Create and push a version tag
+git tag 0.1.3
+git push origin 0.1.3
+```
+
+### Manual Release
+
+Use the "Manual Release" workflow in GitHub Actions:
+1. Go to Actions → Manual Release
+2. Click "Run workflow"
+3. Enter version number
+4. Choose whether to test on Test PyPI first
+
+### Continuous Integration
+
+All pushes and pull requests run:
+- Multi-platform tests (Linux, macOS, Windows)
+- Python 3.8-3.12 compatibility tests
+- Code quality checks (black, isort, flake8, mypy)
