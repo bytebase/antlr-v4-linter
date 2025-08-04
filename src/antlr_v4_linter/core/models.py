@@ -139,7 +139,7 @@ class LinterConfig:
         """Create default configuration with all rules enabled."""
         default_rules = {
             # Syntax and Structure
-            "S001": RuleConfig(enabled=True, severity=Severity.ERROR),
+            "S001": RuleConfig(enabled=True, severity=Severity.INFO),
             "S002": RuleConfig(enabled=True, severity=Severity.WARNING),
             "S003": RuleConfig(enabled=True, severity=Severity.ERROR),
             

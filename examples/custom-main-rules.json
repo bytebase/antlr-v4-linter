@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "S001": {
+      "enabled": true,
+      "severity": "error",
+      "thresholds": {
+        "mainRules": ["program", "compilationUnit", "script"]
+      }
+    }
+  },
+  "output_format": "text"
+}

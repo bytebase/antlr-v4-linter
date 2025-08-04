@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antlr-v4-linter"
-version = "0.1.2"
+version = "0.1.3"
 description = "A comprehensive static analysis linter for ANTLR v4 grammar files"
 readme = "README.md"
 license = {text = "MIT"}

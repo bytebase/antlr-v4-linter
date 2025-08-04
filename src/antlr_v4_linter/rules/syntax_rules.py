@@ -24,22 +24,55 @@ class MissingEOFRule(LintRule):
         if grammar.declaration.grammar_type.value == "lexer":
             return issues
         
-        # Find potential main parser rules (first parser rule or rules starting with common names)
-        main_rule_candidates = []
         parser_rules = [rule for rule in grammar.rules if not rule.is_lexer_rule]
+        if not parser_rules:
+            return issues
         
-        if parser_rules:
-            # First parser rule is often the main rule
-            main_rule_candidates.append(parser_rules[0])
-            
-            # Also check for common main rule names
-            common_main_names = ['program', 'compilationUnit', 'start', 'main', 'root', 'file']
+        # Check if user has configured specific main rules
+        configured_main_rules = config.thresholds.get('mainRules', [])
+        if configured_main_rules:
+            # Use user-configured main rules
+            main_rule_candidates = [
+                rule for rule in parser_rules 
+                if rule.name in configured_main_rules
+            ]
+        else:
+            # Auto-detect main rules
+            # Build a set of all rules that are referenced by other rules
+            referenced_rules = set()
             for rule in parser_rules:
-                if rule.name.lower() in common_main_names:
-                    main_rule_candidates.append(rule)
-        
-        # Remove duplicates
-        main_rule_candidates = list(set(main_rule_candidates))
+                for alternative in rule.alternatives:
+                    for element in alternative.elements:
+                        # Check if this element is a rule reference
+                        if element.element_type == "rule_ref" or (
+                            element.text and 
+                            element.text[0].islower() and 
+                            element.text.isalnum()
+                        ):
+                            referenced_rules.add(element.text)
+            
+            # Find potential main parser rules
+            main_rule_candidates = []
+            
+            # Common main rule names
+            common_main_names = {'program', 'compilationunit', 'start', 'main', 'root', 'file', 
+                               'document', 'script', 'module', 'parse'}
+            
+            for rule in parser_rules:
+                # A rule is likely a main rule if:
+                # 1. It's not referenced by other rules AND
+                # 2. Either it's the first rule OR has a common main name
+                if rule.name not in referenced_rules:
+                    if rule == parser_rules[0] or rule.name.lower() in common_main_names:
+                        main_rule_candidates.append(rule)
+                # OR if it has a very typical main rule name even if referenced
+                elif rule.name.lower() in {'program', 'compilationunit', 'start'}:
+                    # But only if it's one of the first few rules
+                    if parser_rules.index(rule) < 3:
+                        main_rule_candidates.append(rule)
+            
+            # Remove duplicates
+            main_rule_candidates = list(set(main_rule_candidates))
         
         for rule in main_rule_candidates:
             has_eof = False
@@ -56,12 +89,12 @@ class MissingEOFRule(LintRule):
                 issues.append(Issue(
                     rule_id=self.rule_id,
                     severity=config.severity,
-                    message=f"Main parser rule '{rule.name}' should end with EOF token",
+                    message=f"Potential main parser rule '{rule.name}' should end with EOF token",
                     file_path=grammar.file_path,
                     range=rule.range,
                     suggestions=[
                         FixSuggestion(
-                            description="Add EOF token to rule",
+                            description="Add EOF token to rule if this is a main entry point",
                             fix=f"{rule.name}: {self._get_rule_content_with_eof(rule)};"
                         )
                     ]

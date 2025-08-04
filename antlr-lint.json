@@ -1,9 +1,12 @@
 {
   "rules": {
     "S001": {
-      "description": "Missing semicolon at the end of rule",
+      "description": "Main parser rule should end with EOF token",
       "enabled": true,
-      "severity": "error"
+      "severity": "info",
+      "thresholds": {
+        "mainRules": []
+      }
     },
     "S002": {
       "description": "Duplicate rule definition",
