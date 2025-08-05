@@ -4,7 +4,7 @@ from .core.linter import ANTLRLinter
 from .core.models import LinterConfig, Severity
 from .core.config import load_config
 
-__version__ = "0.1.1"
+__version__ = "0.1.4"
 __author__ = "ANTLR v4 Linter Team"
 
 __all__ = [
