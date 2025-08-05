@@ -64,7 +64,79 @@ class OverlappingTokensRule(LintRule):
         if self._is_identifier_pattern(pattern2) and self._is_keyword_like(rule1):
             return f"'{rule1.name}' keyword may be matched by identifier '{rule2.name}'"
         
+        # Check for numeric pattern overlaps
+        if self._is_numeric_pattern(rule1) and self._is_numeric_pattern(rule2):
+            # Check if patterns could match the same input
+            if self._numeric_patterns_overlap(rule1, rule2):
+                return f"numeric patterns may overlap"
+        
         return ""
+    
+    def _is_numeric_pattern(self, rule) -> bool:
+        """Check if rule is a numeric pattern."""
+        # Check if rule name suggests numeric
+        if any(name in rule.name.upper() for name in ['NUMBER', 'NUM', 'INT', 'FLOAT', 'DECIMAL', 'DIGIT']):
+            return True
+        
+        # Check if rule contains numeric patterns
+        for alt in rule.alternatives:
+            for element in alt.elements:
+                text = element.text
+                # Check for digit patterns
+                if any(pattern in text for pattern in ['0-9', '\\d', 'DIGIT', '[0123456789]']):
+                    return True
+                # Check for explicit numbers
+                if text.strip("'\"").isdigit():
+                    return True
+        
+        return False
+    
+    def _numeric_patterns_overlap(self, rule1, rule2) -> bool:
+        """Check if two numeric patterns could match the same input."""
+        # Simple heuristic: if both rules can match digits, they might overlap
+        # unless one is more specific (e.g., INT vs FLOAT)
+        
+        # Check if one is integer and other is float
+        is_int1 = 'INT' in rule1.name.upper() or 'INTEGER' in rule1.name.upper()
+        is_int2 = 'INT' in rule2.name.upper() or 'INTEGER' in rule2.name.upper()
+        is_float1 = 'FLOAT' in rule1.name.upper() or 'DECIMAL' in rule1.name.upper()
+        is_float2 = 'FLOAT' in rule2.name.upper() or 'DECIMAL' in rule2.name.upper()
+        
+        # INT and FLOAT typically overlap (FLOAT can match "123")
+        if (is_int1 and is_float2) or (is_int2 and is_float1):
+            return True
+        
+        # Both are generic number patterns
+        if not (is_int1 or is_int2 or is_float1 or is_float2):
+            # If both just match digits, they likely overlap
+            return True
+        
+        # Check for specific patterns
+        pattern1 = self._get_numeric_pattern_type(rule1)
+        pattern2 = self._get_numeric_pattern_type(rule2)
+        
+        # If both can match simple integers, they overlap
+        if pattern1 == pattern2 == "integer":
+            return True
+        
+        return False
+    
+    def _get_numeric_pattern_type(self, rule) -> str:
+        """Get the type of numeric pattern (integer, float, etc.)."""
+        for alt in rule.alternatives:
+            has_dot = any('.' in element.text for element in alt.elements)
+            has_digits = any(self._has_digit_pattern(element.text) for element in alt.elements)
+            
+            if has_dot and has_digits:
+                return "float"
+            elif has_digits:
+                return "integer"
+        
+        return "unknown"
+    
+    def _has_digit_pattern(self, text: str) -> bool:
+        """Check if text contains digit pattern."""
+        return any(pattern in text for pattern in ['0-9', '\\d', 'DIGIT', '[0123456789]']) or text.strip("'\"").isdigit()
     
     def _extract_literals(self, rule) -> Set[str]:
         """Extract string literals from a rule."""
@@ -148,6 +220,10 @@ class UnreachableTokenRule(LintRule):
         """Check if earlier_rule might shadow later_rule."""
         # Simple heuristic: check if earlier rule is more general
         
+        # Check if rules have identical patterns
+        if self._have_identical_patterns(earlier_rule, later_rule):
+            return True
+        
         # If earlier rule has a catch-all pattern
         for alt in earlier_rule.alternatives:
             for element in alt.elements:
@@ -159,6 +235,22 @@ class UnreachableTokenRule(LintRule):
             return True
         
         return False
+    
+    def _have_identical_patterns(self, rule1, rule2) -> bool:
+        """Check if two rules have identical patterns."""
+        # Get all patterns from both rules
+        patterns1 = set()
+        for alt in rule1.alternatives:
+            pattern = ' '.join(elem.text for elem in alt.elements)
+            patterns1.add(pattern)
+        
+        patterns2 = set()
+        for alt in rule2.alternatives:
+            pattern = ' '.join(elem.text for elem in alt.elements)
+            patterns2.add(pattern)
+        
+        # If they have the same patterns, they're identical
+        return patterns1 == patterns2
     
     def _is_identifier_like(self, rule) -> bool:
         """Check if rule matches identifier-like patterns."""

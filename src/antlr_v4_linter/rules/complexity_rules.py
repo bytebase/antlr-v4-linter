@@ -117,8 +117,8 @@ class DeeplyNestedRuleRule(LintRule):
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
         
-        # Default threshold for deep nesting
-        max_nesting = 4
+        # Get threshold from config, default to 4
+        max_nesting = config.thresholds.get("maxNestingDepth", 4)
         
         for rule in grammar.rules:
             max_depth = self._calculate_max_nesting_depth(rule)
@@ -174,8 +174,8 @@ class VeryLongRuleRule(LintRule):
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
         
-        # Default threshold for rule length (in lines)
-        max_lines = 30
+        # Get threshold from config, default to 30
+        max_lines = config.thresholds.get("maxLines", 30)
         
         for rule in grammar.rules:
             # Calculate rule length (simple approximation)

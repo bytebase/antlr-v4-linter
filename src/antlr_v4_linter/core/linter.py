@@ -2,8 +2,8 @@ import fnmatch
 from pathlib import Path
 from typing import List, Union
 
+from .parser import AntlrGrammarParser
 from .models import GrammarAST, LintResult, LinterConfig
-from .parser import SimpleGrammarParser
 from .reporter import Reporter, ReporterFactory
 from .rule_engine import RuleEngine
 
@@ -13,7 +13,7 @@ class ANTLRLinter:
     
     def __init__(self, config: LinterConfig = None):
         self.config = config or LinterConfig.default()
-        self.parser = SimpleGrammarParser()
+        self.parser = AntlrGrammarParser()
         self.rule_engine = RuleEngine()
         self._register_default_rules()
     

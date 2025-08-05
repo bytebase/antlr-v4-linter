@@ -20,6 +20,10 @@ class MissingEOFRule(LintRule):
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
         
+        # Skip if rule is disabled
+        if not config.enabled:
+            return issues
+        
         # Skip lexer grammars
         if grammar.declaration.grammar_type.value == "lexer":
             return issues
@@ -42,13 +46,22 @@ class MissingEOFRule(LintRule):
             referenced_rules = set()
             for rule in parser_rules:
                 for alternative in rule.alternatives:
-                    for element in alternative.elements:
+                    for i, element in enumerate(alternative.elements):
                         # Check if this element is a rule reference
-                        if element.element_type == "rule_ref" or (
-                            element.text and 
-                            element.text[0].islower() and 
-                            element.text.isalnum()
-                        ):
+                        if element.element_type == "rule_ref":
+                            referenced_rules.add(element.text)
+                        # Also check if the previous element was a rule ref followed by a suffix
+                        # This handles cases like "rs_colattributes?" where they're parsed as two elements
+                        elif element.element_type == "suffix" and i > 0:
+                            prev_element = alternative.elements[i - 1]
+                            if prev_element.element_type == "rule_ref":
+                                # Already added in the previous condition
+                                pass
+                        # Fallback check for rule references not properly tagged
+                        elif (element.text and 
+                              element.text[0].islower() and 
+                              element.text.isalnum() and
+                              not element.element_type in ["suffix", "terminal", "char_set", "token_ref"]):
                             referenced_rules.add(element.text)
             
             # Find potential main parser rules
@@ -123,6 +136,10 @@ class IncompleteInputParsingRule(LintRule):
     
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
+        
+        # Skip if rule is disabled
+        if not config.enabled:
+            return issues
         
         # Only check lexer and combined grammars
         if grammar.declaration.grammar_type.value == "parser":

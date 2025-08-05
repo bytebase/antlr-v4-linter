@@ -45,6 +45,24 @@ class BacktrackingRule(LintRule):
         """Find patterns that may cause excessive backtracking."""
         patterns = []
         
+        # Check for common prefix in alternatives (key backtracking cause)
+        if len(rule.alternatives) > 1:
+            for i, alt1 in enumerate(rule.alternatives):
+                for alt2 in rule.alternatives[i+1:]:
+                    if self._alternatives_have_common_prefix(alt1, alt2):
+                        patterns.append((
+                            "Factor out common prefix or reorder alternatives",
+                            "alternatives with common prefix require backtracking"
+                        ))
+                        break
+                    # Check for optional prefix conflicts
+                    if self._has_optional_prefix_conflict(alt1, alt2):
+                        patterns.append((
+                            "Optional prefix conflicts with another alternative",
+                            "optional prefix may cause backtracking"
+                        ))
+                        break
+        
         for alt in rule.alternatives:
             # Check for (x)* (y)* patterns
             has_consecutive_star = False
@@ -84,6 +102,37 @@ class BacktrackingRule(LintRule):
                 ))
         
         return patterns
+    
+    def _alternatives_have_common_prefix(self, alt1, alt2) -> bool:
+        """Check if two alternatives share a common prefix."""
+        if not alt1.elements or not alt2.elements:
+            return False
+        
+        # Check if first elements match
+        return alt1.elements[0].text == alt2.elements[0].text
+    
+    def _has_optional_prefix_conflict(self, alt1, alt2) -> bool:
+        """Check if one alternative has optional prefix that conflicts with another."""
+        if not alt1.elements or not alt2.elements:
+            return False
+        
+        # Check if alt1 starts with optional group
+        first_elem = alt1.elements[0].text
+        if '?' in first_elem and ('(' in first_elem or ')' in first_elem):
+            # Extract the optional content
+            optional_content = first_elem.strip('()?')
+            # Check if alt2 starts with the same content
+            if alt2.elements[0].text.strip("'\"") == optional_content.strip("'\""):
+                return True
+        
+        # Check reverse case
+        first_elem = alt2.elements[0].text
+        if '?' in first_elem and ('(' in first_elem or ')' in first_elem):
+            optional_content = first_elem.strip('()?')
+            if alt1.elements[0].text.strip("'\"") == optional_content.strip("'\""):
+                return True
+        
+        return False
     
     def _alternatives_overlap(self, alt1, alt2) -> bool:
         """Check if two alternatives might overlap."""
@@ -154,6 +203,22 @@ class InefficientLexerRule(LintRule):
             for element in alt.elements:
                 text = element.text
                 
+                # Check for catastrophic backtracking patterns like (.*)* or (.*)+
+                if '(.*)*' in text or '(.*)+' in text:
+                    inefficiencies.append((
+                        "catastrophic backtracking pattern",
+                        "Remove nested quantifiers or use atomic groups"
+                    ))
+                
+                # Check for nested quantifiers like (a+)+ or (\w*)*
+                import re
+                nested_pattern = r'\([^)]*[+*]\)[+*]'
+                if re.search(nested_pattern, text):
+                    inefficiencies.append((
+                        "nested quantifiers can cause exponential backtracking",
+                        "Flatten nested quantifiers or use possessive quantifiers"
+                    ))
+                
                 # Check for .* at the beginning
                 if text.startswith('.*'):
                     inefficiencies.append((
@@ -180,11 +245,14 @@ class InefficientLexerRule(LintRule):
                             ))
                 
                 # Check for unnecessary alternation in lexer
-                if '|' in text and all(c in "'\"" for c in text if c in "'\""):
-                    inefficiencies.append((
-                        "string literal alternation",
-                        "Consider using character class for single characters"
-                    ))
+                if '|' in text and text.count('|') > 5:
+                    # Check if it's single character alternation that could be a character class
+                    parts = text.split('|')
+                    if all(len(p.strip("()")) == 1 or (p.startswith("'") and p.endswith("'") and len(p) == 3) for p in parts):
+                        inefficiencies.append((
+                            "inefficient alternation pattern",
+                            "Use character class [a-h] instead of (a|b|c|d|e|f|g|h)"
+                        ))
         
         return inefficiencies
     
