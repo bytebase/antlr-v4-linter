@@ -44,7 +44,7 @@ class ParserRuleNamingRule(LintRule):
 
 
 class LexerRuleNamingRule(LintRule):
-    """N002: Lexer rules should start with uppercase letter."""
+    """N002: Lexer rules should be in uppercase."""
     
     def __init__(self):
         super().__init__(
@@ -59,13 +59,14 @@ class LexerRuleNamingRule(LintRule):
         lexer_rules = [rule for rule in grammar.rules if rule.is_lexer_rule]
         
         for rule in lexer_rules:
-            if rule.name and not rule.name[0].isupper():
-                correct_name = rule.name[0].upper() + rule.name[1:]
+            if rule.name and not rule.name.isupper():
+                # Convert to all uppercase for lexer rules (ANTLR convention)
+                correct_name = rule.name.upper()
                 
                 issues.append(Issue(
                     rule_id=self.rule_id,
                     severity=config.severity,
-                    message=f"Lexer rule '{rule.name}' should start with uppercase letter",
+                    message=f"Lexer rule '{rule.name}' should be all uppercase",
                     file_path=grammar.file_path,
                     range=rule.range,
                     suggestions=[
@@ -100,9 +101,7 @@ class InconsistentNamingRule(LintRule):
         if len(parser_rules) > 1:
             issues.extend(self._check_parser_rule_consistency(parser_rules, grammar.file_path, config))
         
-        # Check lexer rules for consistency (though they should all be uppercase)
-        if len(lexer_rules) > 1:
-            issues.extend(self._check_lexer_rule_consistency(lexer_rules, grammar.file_path, config))
+        # Skip lexer rules - they have their own naming convention (all uppercase)
         
         return issues
     

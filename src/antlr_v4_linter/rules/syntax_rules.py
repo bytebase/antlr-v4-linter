@@ -20,6 +20,10 @@ class MissingEOFRule(LintRule):
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
         
+        # Skip if rule is disabled
+        if not config.enabled:
+            return issues
+        
         # Skip lexer grammars
         if grammar.declaration.grammar_type.value == "lexer":
             return issues
@@ -132,6 +136,10 @@ class IncompleteInputParsingRule(LintRule):
     
     def check(self, grammar: GrammarAST, config: RuleConfig) -> List[Issue]:
         issues = []
+        
+        # Skip if rule is disabled
+        if not config.enabled:
+            return issues
         
         # Only check lexer and combined grammars
         if grammar.declaration.grammar_type.value == "parser":
